@@ -1,6 +1,12 @@
 import { GameState, Move, Player, Token, DiceRoll, Color, GameConfig, SplitMove, TurnMove } from './types';
+import { MoveExecutor } from './move-executor';
 
 export class RulesEngine {
+  private moveExecutor: MoveExecutor;
+
+  constructor() {
+    this.moveExecutor = new MoveExecutor();
+  }
   /**
    * Check if a move is valid given the current game state and dice roll
    */
@@ -20,12 +26,12 @@ export class RulesEngine {
       if (!diceRoll.hasValidSix) return false;
       
       // Check if starting position is occupied by own token
-      const startingPosition = this.getStartingPosition(player.color);
+      const startingPosition = this.moveExecutor.getStartingPosition(player.color);
       const occupyingTokenIds = gameState.board[startingPosition];
       if (occupyingTokenIds && occupyingTokenIds.length > 0) {
         // In stacking mode, check if any token belongs to same player
         if (!gameState.config.allowTokenStacking) {
-          const occupyingToken = this.findTokenById(gameState, occupyingTokenIds[0]);
+          const occupyingToken = this.moveExecutor.findTokenById(gameState, occupyingTokenIds[0]);
           if (occupyingToken && occupyingToken.playerId === move.playerId) {
             return false; // Cannot land on own token
           }
@@ -39,11 +45,11 @@ export class RulesEngine {
     if (token.state === 'finished') return false;
 
     // Calculate new position
-    const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
+    const newPosition = this.moveExecutor.calculateNewPosition(token.position, move.steps, player.color);
     
     // Check if move would overshoot in home column
     if (token.state === 'home-column') {
-      const homeColumnStart = this.getHomeColumnStart(player.color);
+      const homeColumnStart = this.moveExecutor.getHomeColumnStart(player.color);
       const homeColumnEnd = homeColumnStart + 5; // Home column has 6 squares (0-5)
       const finishPosition = homeColumnEnd + 1; // Position that triggers finishing
       
@@ -59,7 +65,7 @@ export class RulesEngine {
       
       // Check if any occupying token belongs to same player
       for (const tokenId of occupyingTokenIds) {
-        const occupyingToken = this.findTokenById(gameState, tokenId);
+        const occupyingToken = this.moveExecutor.findTokenById(gameState, tokenId);
         if (occupyingToken && occupyingToken.playerId === move.playerId) {
           // In stacking mode, allow multiple own tokens
           if (!gameState.config.allowTokenStacking) {
@@ -73,7 +79,7 @@ export class RulesEngine {
     if (newPosition < 52 && gameState.board[newPosition].length > 0) {
       const occupyingTokenIds = gameState.board[newPosition];
       for (const tokenId of occupyingTokenIds) {
-        const occupyingToken = this.findTokenById(gameState, tokenId);
+        const occupyingToken = this.moveExecutor.findTokenById(gameState, tokenId);
         if (occupyingToken && occupyingToken.playerId !== move.playerId) {
           if (this.isSafeSquareForColor(newPosition, this.getPlayerColor(gameState, occupyingToken.playerId), gameState.config)) {
             return false; // Cannot capture on safe square
@@ -99,7 +105,7 @@ export class RulesEngine {
    * Check if a square is safe for a given color
    */
   isSafeSquareForColor(position: number, color: Color, gameConfig: GameConfig): boolean {
-    const startingPosition = this.getStartingPosition(color);
+    const startingPosition = this.moveExecutor.getStartingPosition(color);
     const safePositions = this.getSafePositions(color);
     
     const isStartingSquareSafe = gameConfig.safeStartingSquares && position === startingPosition;
@@ -122,19 +128,6 @@ export class RulesEngine {
   }
 
   /**
-   * Get starting position for a color (0-based indexing)
-   */
-  getStartingPosition(color: Color): number {
-    switch (color) {
-      case 'red': return 0; // Square 1
-      case 'blue': return 13; // Square 14
-      case 'green': return 26; // Square 27
-      case 'yellow': return 39; // Square 40
-      default: return 0;
-    }
-  }
-
-  /**
    * Check if a capture can happen at a position
    */
   canCaptureAt(gameState: GameState, position: number, capturingPlayerId: string): boolean {
@@ -143,7 +136,7 @@ export class RulesEngine {
 
     // Check if any token can be captured
     for (const tokenId of occupyingTokenIds) {
-      const occupyingToken = this.findTokenById(gameState, tokenId);
+      const occupyingToken = this.moveExecutor.findTokenById(gameState, tokenId);
       if (!occupyingToken) continue;
 
       // Cannot capture own token
@@ -378,74 +371,9 @@ export class RulesEngine {
    * Apply a move to game state (for simulation)
    */
   private applyMoveToGameState(gameState: GameState, move: Move): void {
-    const player = gameState.players.find(p => p.id === move.playerId);
-    if (!player) return;
-
-    const token = player.tokens.find(t => t.id === move.tokenId);
-    if (!token) return;
-
-    // Simple move application (without capture logic for simulation)
-    if (token.position === -1) {
-      token.position = this.getStartingPosition(player.color);
-      token.state = 'in-play';
-    } else {
-      const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
-      token.position = newPosition;
-    }
-  }
-
-  /**
-   * Calculate new position after moving
-   */
-  private calculateNewPosition(currentPosition: number, steps: number, color: Color): number {
-    if (currentPosition === -1) {
-      // Moving out of home
-      return this.getStartingPosition(color);
-    }
-
-    // Check if token is already in home column
-    const homeColumnStart = this.getHomeColumnStart(color);
-    if (currentPosition >= homeColumnStart) {
-      // Token is in home column, just add steps
-      return currentPosition + steps;
-    }
-
-    // Regular board movement with wrapping
-    const newPosition = (currentPosition + steps) % 52;
-    
-    // Check if entering home column
-    const homeEntry = this.getHomeColumnEntry(color);
-    if (currentPosition <= homeEntry && newPosition > homeEntry) {
-      // Entering home column
-      const stepsIntoHome = newPosition - homeEntry - 1;
-      return homeColumnStart + stepsIntoHome;
-    }
-
-    return newPosition;
-  }
-
-  /**
-   * Get home column start position for a color
-   */
-  private getHomeColumnStart(color: Color): number {
-    switch (color) {
-      case 'red': return 52;
-      case 'blue': return 58;
-      case 'green': return 64;
-      case 'yellow': return 70;
-      default: return 52;
-    }
-  }
-
-  /**
-   * Find a token by ID across all players
-   */
-  private findTokenById(gameState: GameState, tokenId: string): Token | undefined {
-    for (const player of gameState.players) {
-      const token = player.tokens.find(t => t.id === tokenId);
-      if (token) return token;
-    }
-    return undefined;
+    // Use MoveExecutor for accurate simulation with all side effects
+    // This ensures validation matches execution exactly
+    this.moveExecutor.executeMove(gameState, move);
   }
 
   /**
