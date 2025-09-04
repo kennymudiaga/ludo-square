@@ -113,13 +113,16 @@ describe('ActionHandler', () => {
       const result = actionHandler.executeTurnMove(gameState, turnMove);
       
       expect(result.movesExecuted).toBe(2);
-      expect(result.captured).toBe(false); // No captures in this scenario
+      expect(result.captured).toBe(true); // r2 moving from 5 to 8 captures b2
       
       // Check token positions
       const token2 = gameState.players[0].tokens[1];
       const token3 = gameState.players[0].tokens[2];
-      expect(token2.position).toBe(8); // 5 + 3
-      expect(token3.position).toBe(49); // 45 + 4
+      
+      // In 'finish' capture mode, capturing token goes to finish line
+      expect(token2.position).toBe(99); // Captured b2, so goes to finish
+      expect(token2.state).toBe('finished');
+      expect(token3.position).toBe(49); // 45 + 4, normal move
     });
 
     test('should handle captures in turn moves', () => {
@@ -149,7 +152,7 @@ describe('ActionHandler', () => {
       const token = gameState.players[0].tokens[0];
       expect(token.position).toBe(0); // Red starting position
       expect(token.state).toBe('in-play');
-      expect(gameState.board[0]).toBe('r1');
+      expect(gameState.board[0]).toEqual(['r1']); // Board uses arrays now
     });
 
     test('should move token forward on board', () => {
@@ -160,8 +163,8 @@ describe('ActionHandler', () => {
       
       const token = gameState.players[0].tokens[1];
       expect(token.position).toBe(7); // 5 + 2
-      expect(gameState.board[5]).toBeNull(); // Old position cleared
-      expect(gameState.board[7]).toBe('r2'); // New position set
+      expect(gameState.board[5]).toEqual([]); // Old position cleared (empty array)
+      expect(gameState.board[7]).toEqual(['r2']); // New position set (array)
     });
 
     test('should handle board wrapping', () => {
@@ -176,8 +179,8 @@ describe('ActionHandler', () => {
       actionHandler.executeMove(gameState, move);
       
       expect(token.position).toBe(3); // (50 + 5) % 52
-      expect(gameState.board[50]).toBeNull();
-      expect(gameState.board[3]).toBe('r3');
+      expect(gameState.board[50]).toEqual([]); // Old position cleared (empty array)
+      expect(gameState.board[3]).toEqual(['r3']); // New position set (array)
     });
 
     test('should capture opponent token', () => {

@@ -58,7 +58,7 @@ describe('GameStateManager', () => {
       const players = [{ id: 'p1', color: 'red' as const }];
       const game = gameManager.createGame(players, defaultConfig);
       
-      expect(game.board.every(square => square === null)).toBe(true);
+      expect(game.board.every(square => Array.isArray(square) && square.length === 0)).toBe(true);
     });
   });
 

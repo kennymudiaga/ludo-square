@@ -41,7 +41,19 @@ export class RulesEngine {
     // Calculate new position
     const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
     
-    // Check if new position would be occupied by own token
+    // Check if move would overshoot in home column
+    if (token.state === 'home-column') {
+      const homeColumnStart = this.getHomeColumnStart(player.color);
+      const homeColumnEnd = homeColumnStart + 5; // Home column has 6 squares (0-5)
+      const finishPosition = homeColumnEnd + 1; // Position that triggers finishing
+      
+      // In home column, you can only move to finish exactly (no overshooting)
+      if (newPosition > finishPosition) {
+        return false; // Overshooting the finish line is not allowed
+      }
+    }
+    
+    // Check if new position would be occupied by own token (only for board positions)
     if (newPosition < 52 && gameState.board[newPosition].length > 0) {
       const occupyingTokenIds = gameState.board[newPosition];
       
@@ -57,7 +69,7 @@ export class RulesEngine {
       }
     }
 
-    // Check if trying to capture on a safe square
+    // Check if trying to capture on a safe square (only for board positions)
     if (newPosition < 52 && gameState.board[newPosition].length > 0) {
       const occupyingTokenIds = gameState.board[newPosition];
       for (const tokenId of occupyingTokenIds) {
@@ -200,12 +212,46 @@ export class RulesEngine {
     const diceValues = turnMove.diceValues;
     const moves = turnMove.moves;
 
+    // Special case: empty moves array - check if no moves are possible
+    if (moves.length === 0) {
+      if (gameState.config.enforceFullDiceUsage) {
+        // Check if any individual die can make a valid move
+        const player = gameState.players.find(p => p.id === turnMove.playerId);
+        if (!player) return false;
+
+        for (const dieValue of diceValues) {
+          for (const token of player.tokens) {
+            const move = {
+              playerId: turnMove.playerId,
+              tokenId: token.id,
+              steps: dieValue
+            };
+            
+            const diceRoll = {
+              values: [dieValue],
+              sum: dieValue,
+              canMoveAgain: false,
+              hasValidSix: dieValue === 6
+            };
+            
+            if (this.isValidMove(gameState, move, diceRoll)) {
+              return false; // Found a valid move, so empty moves array is invalid
+            }
+          }
+        }
+        
+        return true; // No valid moves found, empty moves array is valid
+      }
+      // If not enforcing full dice usage, empty moves are always valid
+      return true;
+    }
+
     // Check if all dice values are accounted for
     const usedDiceIndices = moves.map(m => m.dieIndex);
     const allDiceUsed = diceValues.every((_, index) => usedDiceIndices.includes(index));
 
-    // If not all dice used, check if full usage is possible
-    if (!allDiceUsed) {
+    // If not all dice used and enforceFullDiceUsage is enabled, check if full usage is possible
+    if (!allDiceUsed && gameState.config.enforceFullDiceUsage) {
       const allPossibleCombinations = this.getAllValidMoveCombinations(gameState, turnMove.playerId, diceValues);
       const hasFullUsageCombination = allPossibleCombinations.some(combo => combo.length === diceValues.length);
       
@@ -218,6 +264,16 @@ export class RulesEngine {
     let simulatedGameState = JSON.parse(JSON.stringify(gameState)); // Deep clone
     
     for (const move of moves) {
+      // Check that die index is valid
+      if (move.dieIndex < 0 || move.dieIndex >= diceValues.length) {
+        return false;
+      }
+      
+      // Check that steps match the die value at the specified index
+      if (move.steps !== diceValues[move.dieIndex]) {
+        return false;
+      }
+      
       const individualMove: Move = {
         playerId: turnMove.playerId,
         tokenId: move.tokenId,
@@ -347,8 +403,38 @@ export class RulesEngine {
       return this.getStartingPosition(color);
     }
 
+    // Check if token is already in home column
+    const homeColumnStart = this.getHomeColumnStart(color);
+    if (currentPosition >= homeColumnStart) {
+      // Token is in home column, just add steps
+      return currentPosition + steps;
+    }
+
+    // Regular board movement with wrapping
     const newPosition = (currentPosition + steps) % 52;
+    
+    // Check if entering home column
+    const homeEntry = this.getHomeColumnEntry(color);
+    if (currentPosition <= homeEntry && newPosition > homeEntry) {
+      // Entering home column
+      const stepsIntoHome = newPosition - homeEntry - 1;
+      return homeColumnStart + stepsIntoHome;
+    }
+
     return newPosition;
+  }
+
+  /**
+   * Get home column start position for a color
+   */
+  private getHomeColumnStart(color: Color): number {
+    switch (color) {
+      case 'red': return 52;
+      case 'blue': return 58;
+      case 'green': return 64;
+      case 'yellow': return 70;
+      default: return 52;
+    }
   }
 
   /**
