@@ -57,9 +57,10 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 
 ### Basic Movement
 1. **Dice Roll**: Player rolls dice according to game configuration
-2. **Token Selection**: Player chooses which token to move (if multiple options available)
-3. **Movement**: Token moves clockwise the number of squares equal to dice sum
-4. **Mandatory Move**: If possible moves exist, player must make a move
+2. **Individual Die Usage**: Each die value becomes a separate move (no summing)
+3. **Move Ordering**: Player chooses the order to use each die value
+4. **All-or-Nothing Rule**: Must use ALL dice if any valid combination exists
+5. **Move Validation**: Cannot choose moves that leave other dice unused when full usage is possible
 
 ### Special Rules
 
@@ -92,20 +93,29 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 
 #### Dice Rolling Mechanics
 - **Two Dice (Default)**: 
-  - Roll both dice, use sum for movement OR split dice on separate tokens
+  - Roll both dice, each die value is a separate move
   - Double 6s (6+6) grants extra turn
   - At least one 6 allows moving token out of home
-  - **Split Movement**: Can use each die value on different tokens (e.g., 6+3 = move one token 6, another token 3)
+  - **Individual Usage**: Use each die separately on any tokens (e.g., 6+3 = one move of 6, one move of 3)
+  - **All-or-Nothing**: Must use both dice if any combination allows full usage
 - **Single Die (Classic)**: 
-  - Roll 1-6, move that many squares
+  - Roll 1-6, single move of that value
   - Rolling 6 grants extra turn and allows moving out of home
+- **Multiple Turns**: Each consecutive turn adds more dice values to use
 - **Consecutive Limits**: Maximum 3 consecutive extra turns
 
 #### Valid Moves
 1. **From Home**: Requires at least one 6, moves to starting square
-2. **On Board**: Move forward the rolled number of squares (dice sum)
+2. **On Board**: Move forward the exact die value (not sum)
 3. **Into Home Column**: Must complete full lap, then enter home stretch
 4. **In Home Column**: Move toward center, must roll exact number to finish
+5. **Multi-Die Constraint**: Must use ALL dice if any valid combination exists
+
+#### Move Combination Rules
+- **Full Usage Priority**: If any combination uses all dice, partial usage is forbidden
+- **Strategic Limitation**: Cannot cherry-pick favorable moves while ignoring others
+- **Capture Constraint**: Captures only allowed if remaining dice have valid moves
+- **Example**: Roll {2, 3} - if {2} captures but {3} has no move, capture is forbidden
 
 #### Invalid Moves
 - Moving a token that would land on own token (unless stacking is enabled)
@@ -146,7 +156,8 @@ Safe squares (cannot be captured):
 4. **Configurable Capture**: Support both "stay at square" and "go to finish" modes
 5. **Configurable Safe Starting Squares**: Starting squares can be safe or regular squares
 6. **Exact Finish**: Must roll exact number to reach finish in home column
-7. **Split Dice Movement**: In 2-dice mode, use each die on separate tokens
+7. **Individual Die Usage**: Each die value is a separate move, not summed
+8. **All-or-Nothing Rule**: Must use all dice if any combination allows full usage
 
 ### Game Configuration Object
 ```typescript
@@ -156,7 +167,7 @@ interface GameConfig {
   maxConsecutiveSixes: number;
   safeStartingSquares: boolean;
   allowTokenStacking: boolean;
-  allowSplitDiceMovement: boolean; // In 2-dice mode, use each die on separate tokens
+  enforceFullDiceUsage: boolean; // All-or-nothing rule for dice usage
 }
 ```
 

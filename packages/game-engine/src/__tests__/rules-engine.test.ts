@@ -16,7 +16,7 @@ describe('RulesEngine', () => {
       maxConsecutiveSixes: 3,
       safeStartingSquares: true,
       allowTokenStacking: false,
-      allowSplitDiceMovement: false
+      enforceFullDiceUsage: false
     };
     
     // Create basic game state for testing

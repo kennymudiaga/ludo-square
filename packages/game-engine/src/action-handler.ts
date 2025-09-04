@@ -1,4 +1,4 @@
-import { GameState, Move, DiceRoll, GameConfig, Color, Token, SplitMove } from './types';
+import { GameState, Move, DiceRoll, GameConfig, Color, Token, SplitMove, TurnMove } from './types';
 import { RulesEngine } from './rules-engine';
 
 export class ActionHandler {
@@ -115,21 +115,28 @@ export class ActionHandler {
   }
 
   /**
-   * Execute a split move (using each die value on separate tokens)
+   * Execute a complete turn with multiple moves
    */
-  executeSplitMove(gameState: GameState, splitMove: SplitMove): { captured: boolean; capturedTokenIds: string[] } {
+  executeTurnMove(gameState: GameState, turnMove: TurnMove): { 
+    captured: boolean; 
+    capturedTokenIds: string[];
+    movesExecuted: number;
+  } {
     let totalCaptured = false;
     const capturedTokenIds: string[] = [];
+    let movesExecuted = 0;
 
-    // Execute each individual move in the split move
-    for (const individualMove of splitMove.moves) {
+    // Execute each move in the specified order
+    for (const moveData of turnMove.moves) {
       const move: Move = {
-        playerId: splitMove.playerId,
-        tokenId: individualMove.tokenId,
-        steps: individualMove.steps
+        playerId: turnMove.playerId,
+        tokenId: moveData.tokenId,
+        steps: moveData.steps
       };
 
       const result = this.executeMove(gameState, move);
+      movesExecuted++;
+
       if (result.captured) {
         totalCaptured = true;
         if (result.capturedTokenId) {
@@ -138,7 +145,29 @@ export class ActionHandler {
       }
     }
 
-    return { captured: totalCaptured, capturedTokenIds };
+    return { captured: totalCaptured, capturedTokenIds, movesExecuted };
+  }
+
+  /**
+   * Get all valid turn moves for given dice values
+   */
+  getValidTurnMoves(gameState: GameState, playerId: string, diceValues: number[]): TurnMove[] {
+    const allCombinations = this.rulesEngine.getAllValidMoveCombinations(gameState, playerId, diceValues);
+    const validTurnMoves: TurnMove[] = [];
+
+    for (const combination of allCombinations) {
+      const turnMove: TurnMove = {
+        playerId,
+        moves: combination,
+        diceValues
+      };
+
+      if (this.rulesEngine.validateTurnMove(gameState, turnMove)) {
+        validTurnMoves.push(turnMove);
+      }
+    }
+
+    return validTurnMoves;
   }
 
   /**

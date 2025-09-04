@@ -1,4 +1,4 @@
-import { GameState, Move, Player, Token, DiceRoll, Color, GameConfig, SplitMove } from './types';
+import { GameState, Move, Player, Token, DiceRoll, Color, GameConfig, SplitMove, TurnMove } from './types';
 
 export class RulesEngine {
   /**
@@ -193,44 +193,149 @@ export class RulesEngine {
   }
 
   /**
-   * Get all available split moves for a player given a dice roll (2-dice mode)
+   * Validate a complete turn with multiple moves
+   * Ensures all dice are used if possible (all-or-nothing rule)
    */
-  getAvailableSplitMoves(gameState: GameState, playerId: string, diceRoll: DiceRoll): SplitMove[] {
-    if (!gameState.config.allowSplitDiceMovement || diceRoll.values.length !== 2) {
-      return [];
-    }
+  validateTurnMove(gameState: GameState, turnMove: TurnMove): boolean {
+    const diceValues = turnMove.diceValues;
+    const moves = turnMove.moves;
 
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) return [];
+    // Check if all dice values are accounted for
+    const usedDiceIndices = moves.map(m => m.dieIndex);
+    const allDiceUsed = diceValues.every((_, index) => usedDiceIndices.includes(index));
 
-    const splitMoves: SplitMove[] = [];
-    const [die1, die2] = diceRoll.values;
-
-    // Generate all possible combinations of split moves
-    for (const token1 of player.tokens) {
-      for (const token2 of player.tokens) {
-        // Allow same token to be used twice (die1 + die2)
-        const moves = [
-          { tokenId: token1.id, steps: die1 },
-          { tokenId: token2.id, steps: die2 }
-        ];
-
-        // Check if both moves are valid
-        const move1Valid = this.isValidMove(gameState, 
-          { playerId, tokenId: token1.id, steps: die1 }, 
-          { ...diceRoll, sum: die1, hasValidSix: die1 === 6 });
-        
-        const move2Valid = this.isValidMove(gameState, 
-          { playerId, tokenId: token2.id, steps: die2 }, 
-          { ...diceRoll, sum: die2, hasValidSix: die2 === 6 });
-
-        if (move1Valid && move2Valid) {
-          splitMoves.push({ playerId, moves });
-        }
+    // If not all dice used, check if full usage is possible
+    if (!allDiceUsed) {
+      const allPossibleCombinations = this.getAllValidMoveCombinations(gameState, turnMove.playerId, diceValues);
+      const hasFullUsageCombination = allPossibleCombinations.some(combo => combo.length === diceValues.length);
+      
+      if (hasFullUsageCombination) {
+        return false; // Must use all dice if possible
       }
     }
 
-    return splitMoves;
+    // Validate each individual move in sequence
+    let simulatedGameState = JSON.parse(JSON.stringify(gameState)); // Deep clone
+    
+    for (const move of moves) {
+      const individualMove: Move = {
+        playerId: turnMove.playerId,
+        tokenId: move.tokenId,
+        steps: move.steps
+      };
+
+      const diceRoll: DiceRoll = {
+        values: [move.steps],
+        sum: move.steps,
+        canMoveAgain: false,
+        hasValidSix: move.steps === 6
+      };
+
+      if (!this.isValidMove(simulatedGameState, individualMove, diceRoll)) {
+        return false;
+      }
+
+      // Apply the move to the simulated state for next validation
+      this.applyMoveToGameState(simulatedGameState, individualMove);
+    }
+
+    return true;
+  }
+
+  /**
+   * Get all possible move combinations for given dice values
+   */
+  getAllValidMoveCombinations(gameState: GameState, playerId: string, diceValues: number[]): TurnMove['moves'][] {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return [];
+
+    const combinations: TurnMove['moves'][] = [];
+    
+    // Generate all possible combinations recursively
+    this.generateMoveCombinations(gameState, player, diceValues, [], 0, combinations);
+    
+    return combinations;
+  }
+
+  /**
+   * Recursively generate move combinations
+   */
+  private generateMoveCombinations(
+    gameState: GameState, 
+    player: Player, 
+    diceValues: number[], 
+    currentCombination: TurnMove['moves'], 
+    dieIndex: number, 
+    allCombinations: TurnMove['moves'][]
+  ): void {
+    if (dieIndex >= diceValues.length) {
+      if (currentCombination.length > 0) {
+        allCombinations.push([...currentCombination]);
+      }
+      return;
+    }
+
+    const dieValue = diceValues[dieIndex];
+    let validMoveFound = false;
+
+    // Try this die value on each token
+    for (const token of player.tokens) {
+      const move: Move = {
+        playerId: player.id,
+        tokenId: token.id,
+        steps: dieValue
+      };
+
+      const diceRoll: DiceRoll = {
+        values: [dieValue],
+        sum: dieValue,
+        canMoveAgain: false,
+        hasValidSix: dieValue === 6
+      };
+
+      if (this.isValidMove(gameState, move, diceRoll)) {
+        validMoveFound = true;
+        
+        // Add this move to current combination
+        const newCombination = [...currentCombination, {
+          tokenId: token.id,
+          steps: dieValue,
+          dieIndex
+        }];
+
+        // Apply move to simulated state
+        const simulatedState = JSON.parse(JSON.stringify(gameState));
+        this.applyMoveToGameState(simulatedState, move);
+
+        // Recurse for next die
+        this.generateMoveCombinations(simulatedState, player, diceValues, newCombination, dieIndex + 1, allCombinations);
+      }
+    }
+
+    // If no valid move for this die, try skipping it (if allowed)
+    if (!validMoveFound) {
+      this.generateMoveCombinations(gameState, player, diceValues, currentCombination, dieIndex + 1, allCombinations);
+    }
+  }
+
+  /**
+   * Apply a move to game state (for simulation)
+   */
+  private applyMoveToGameState(gameState: GameState, move: Move): void {
+    const player = gameState.players.find(p => p.id === move.playerId);
+    if (!player) return;
+
+    const token = player.tokens.find(t => t.id === move.tokenId);
+    if (!token) return;
+
+    // Simple move application (without capture logic for simulation)
+    if (token.position === -1) {
+      token.position = this.getStartingPosition(player.color);
+      token.state = 'in-play';
+    } else {
+      const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
+      token.position = newPosition;
+    }
   }
 
   /**

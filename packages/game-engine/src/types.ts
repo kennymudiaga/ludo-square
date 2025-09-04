@@ -12,7 +12,7 @@ export interface GameConfig {
   maxConsecutiveSixes: number;
   safeStartingSquares: boolean;
   allowTokenStacking: boolean;
-  allowSplitDiceMovement: boolean; // In 2-dice mode, use each die on separate tokens
+  enforceFullDiceUsage: boolean; // All-or-nothing rule for dice usage
 }
 
 export interface Player {
@@ -44,6 +44,17 @@ export interface Move {
   playerId: string;
   tokenId: string;
   steps: number;
+  dieIndex?: number; // Which die value this move uses (for tracking)
+}
+
+export interface TurnMove {
+  playerId: string;
+  moves: {
+    tokenId: string;
+    steps: number;
+    dieIndex: number; // Which die value (0, 1, etc.)
+  }[];
+  diceValues: number[]; // The original dice roll
 }
 
 export interface SplitMove {

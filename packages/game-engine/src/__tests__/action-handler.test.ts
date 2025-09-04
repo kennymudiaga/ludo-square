@@ -1,6 +1,6 @@
 // Tests for ActionHandler class
 import { ActionHandler } from '../action-handler';
-import { GameState, Move, Player, GameConfig } from '../types';
+import { GameState, Move, Player, GameConfig, TurnMove } from '../types';
 
 describe('ActionHandler', () => {
   let actionHandler: ActionHandler;
@@ -16,7 +16,7 @@ describe('ActionHandler', () => {
       maxConsecutiveSixes: 3,
       safeStartingSquares: true,
       allowTokenStacking: false,
-      allowSplitDiceMovement: false
+      enforceFullDiceUsage: false
     };
     
     // Create test game state
@@ -95,6 +95,48 @@ describe('ActionHandler', () => {
       const result = actionHandler.rollDice(singleDiceConfig);
       
       expect(result.hasValidSix).toBe(result.values.includes(6));
+    });
+  });
+
+  describe('Turn Move Execution', () => {
+    test('should execute multiple moves in a turn', () => {
+      // Set up a turn with multiple moves
+      const turnMove: TurnMove = {
+        playerId: 'player1',
+        diceValues: [3, 4],
+        moves: [
+          { tokenId: 'r2', steps: 3, dieIndex: 0 },
+          { tokenId: 'r3', steps: 4, dieIndex: 1 }
+        ]
+      };
+
+      const result = actionHandler.executeTurnMove(gameState, turnMove);
+      
+      expect(result.movesExecuted).toBe(2);
+      expect(result.captured).toBe(false); // No captures in this scenario
+      
+      // Check token positions
+      const token2 = gameState.players[0].tokens[1];
+      const token3 = gameState.players[0].tokens[2];
+      expect(token2.position).toBe(8); // 5 + 3
+      expect(token3.position).toBe(49); // 45 + 4
+    });
+
+    test('should handle captures in turn moves', () => {
+      const turnMove: TurnMove = {
+        playerId: 'player1',
+        diceValues: [3, 2],
+        moves: [
+          { tokenId: 'r2', steps: 3, dieIndex: 0 }, // This should capture b2 at position 8
+          { tokenId: 'r3', steps: 2, dieIndex: 1 }
+        ]
+      };
+
+      const result = actionHandler.executeTurnMove(gameState, turnMove);
+      
+      expect(result.movesExecuted).toBe(2);
+      expect(result.captured).toBe(true);
+      expect(result.capturedTokenIds.length).toBeGreaterThan(0);
     });
   });
 

@@ -21,7 +21,7 @@ describe('Game Engine Integration', () => {
       maxConsecutiveSixes: 3,
       safeStartingSquares: true,
       allowTokenStacking: false,
-      allowSplitDiceMovement: false
+      enforceFullDiceUsage: false
     };
   });
 
