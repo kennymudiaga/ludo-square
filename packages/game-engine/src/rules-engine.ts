@@ -1,4 +1,4 @@
-import { GameState, Move, Player, Token, DiceRoll, Color } from './types';
+import { GameState, Move, Player, Token, DiceRoll, Color, GameConfig, SplitMove } from './types';
 
 export class RulesEngine {
   /**
@@ -21,11 +21,14 @@ export class RulesEngine {
       
       // Check if starting position is occupied by own token
       const startingPosition = this.getStartingPosition(player.color);
-      const occupyingTokenId = gameState.board[startingPosition];
-      if (occupyingTokenId) {
-        const occupyingToken = this.findTokenById(gameState, occupyingTokenId);
-        if (occupyingToken && occupyingToken.playerId === move.playerId) {
-          return false; // Cannot land on own token
+      const occupyingTokenIds = gameState.board[startingPosition];
+      if (occupyingTokenIds && occupyingTokenIds.length > 0) {
+        // In stacking mode, check if any token belongs to same player
+        if (!gameState.config.allowTokenStacking) {
+          const occupyingToken = this.findTokenById(gameState, occupyingTokenIds[0]);
+          if (occupyingToken && occupyingToken.playerId === move.playerId) {
+            return false; // Cannot land on own token
+          }
         }
       }
       
@@ -39,21 +42,30 @@ export class RulesEngine {
     const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
     
     // Check if new position would be occupied by own token
-    if (newPosition < 52 && gameState.board[newPosition]) {
-      const occupyingTokenId = gameState.board[newPosition];
-      const occupyingToken = this.findTokenById(gameState, occupyingTokenId);
-      if (occupyingToken && occupyingToken.playerId === move.playerId) {
-        return false; // Cannot land on own token
+    if (newPosition < 52 && gameState.board[newPosition].length > 0) {
+      const occupyingTokenIds = gameState.board[newPosition];
+      
+      // Check if any occupying token belongs to same player
+      for (const tokenId of occupyingTokenIds) {
+        const occupyingToken = this.findTokenById(gameState, tokenId);
+        if (occupyingToken && occupyingToken.playerId === move.playerId) {
+          // In stacking mode, allow multiple own tokens
+          if (!gameState.config.allowTokenStacking) {
+            return false; // Cannot land on own token
+          }
+        }
       }
     }
 
     // Check if trying to capture on a safe square
-    if (newPosition < 52 && gameState.board[newPosition]) {
-      const occupyingTokenId = gameState.board[newPosition];
-      const occupyingToken = this.findTokenById(gameState, occupyingTokenId);
-      if (occupyingToken && occupyingToken.playerId !== move.playerId) {
-        if (this.isSafeSquareForColor(newPosition, this.getPlayerColor(gameState, occupyingToken.playerId))) {
-          return false; // Cannot capture on safe square
+    if (newPosition < 52 && gameState.board[newPosition].length > 0) {
+      const occupyingTokenIds = gameState.board[newPosition];
+      for (const tokenId of occupyingTokenIds) {
+        const occupyingToken = this.findTokenById(gameState, tokenId);
+        if (occupyingToken && occupyingToken.playerId !== move.playerId) {
+          if (this.isSafeSquareForColor(newPosition, this.getPlayerColor(gameState, occupyingToken.playerId), gameState.config)) {
+            return false; // Cannot capture on safe square
+          }
         }
       }
     }
@@ -74,11 +86,14 @@ export class RulesEngine {
   /**
    * Check if a square is safe for a given color
    */
-  isSafeSquareForColor(position: number, color: Color): boolean {
+  isSafeSquareForColor(position: number, color: Color, gameConfig: GameConfig): boolean {
     const startingPosition = this.getStartingPosition(color);
     const safePositions = this.getSafePositions(color);
     
-    return position === startingPosition || safePositions.includes(position);
+    const isStartingSquareSafe = gameConfig.safeStartingSquares && position === startingPosition;
+    const isRegularSafeSquare = safePositions.includes(position);
+    
+    return isStartingSquareSafe || isRegularSafeSquare;
   }
 
   /**
@@ -111,20 +126,25 @@ export class RulesEngine {
    * Check if a capture can happen at a position
    */
   canCaptureAt(gameState: GameState, position: number, capturingPlayerId: string): boolean {
-    const occupyingTokenId = gameState.board[position];
-    if (!occupyingTokenId) return false;
+    const occupyingTokenIds = gameState.board[position];
+    if (!occupyingTokenIds || occupyingTokenIds.length === 0) return false;
 
-    const occupyingToken = this.findTokenById(gameState, occupyingTokenId);
-    if (!occupyingToken) return false;
+    // Check if any token can be captured
+    for (const tokenId of occupyingTokenIds) {
+      const occupyingToken = this.findTokenById(gameState, tokenId);
+      if (!occupyingToken) continue;
 
-    // Cannot capture own token
-    if (occupyingToken.playerId === capturingPlayerId) return false;
+      // Cannot capture own token
+      if (occupyingToken.playerId === capturingPlayerId) continue;
 
-    // Cannot capture on safe squares
-    const occupyingPlayerColor = this.getPlayerColor(gameState, occupyingToken.playerId);
-    if (this.isSafeSquareForColor(position, occupyingPlayerColor)) return false;
+      // Cannot capture on safe squares
+      const occupyingPlayerColor = this.getPlayerColor(gameState, occupyingToken.playerId);
+      if (this.isSafeSquareForColor(position, occupyingPlayerColor, gameState.config)) continue;
 
-    return true;
+      return true; // Found at least one capturable token
+    }
+
+    return false;
   }
 
   /**
@@ -170,6 +190,47 @@ export class RulesEngine {
     }
 
     return moves;
+  }
+
+  /**
+   * Get all available split moves for a player given a dice roll (2-dice mode)
+   */
+  getAvailableSplitMoves(gameState: GameState, playerId: string, diceRoll: DiceRoll): SplitMove[] {
+    if (!gameState.config.allowSplitDiceMovement || diceRoll.values.length !== 2) {
+      return [];
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return [];
+
+    const splitMoves: SplitMove[] = [];
+    const [die1, die2] = diceRoll.values;
+
+    // Generate all possible combinations of split moves
+    for (const token1 of player.tokens) {
+      for (const token2 of player.tokens) {
+        // Allow same token to be used twice (die1 + die2)
+        const moves = [
+          { tokenId: token1.id, steps: die1 },
+          { tokenId: token2.id, steps: die2 }
+        ];
+
+        // Check if both moves are valid
+        const move1Valid = this.isValidMove(gameState, 
+          { playerId, tokenId: token1.id, steps: die1 }, 
+          { ...diceRoll, sum: die1, hasValidSix: die1 === 6 });
+        
+        const move2Valid = this.isValidMove(gameState, 
+          { playerId, tokenId: token2.id, steps: die2 }, 
+          { ...diceRoll, sum: die2, hasValidSix: die2 === 6 });
+
+        if (move1Valid && move2Valid) {
+          splitMoves.push({ playerId, moves });
+        }
+      }
+    }
+
+    return splitMoves;
   }
 
   /**

@@ -12,7 +12,9 @@ describe('GameStateManager', () => {
       diceMode: 'double',
       captureMode: 'finish',
       maxConsecutiveSixes: 3,
-      safeStartingSquares: true
+      safeStartingSquares: true,
+      allowTokenStacking: false,
+      allowSplitDiceMovement: false
     };
   });
 

@@ -14,7 +14,9 @@ describe('RulesEngine', () => {
       diceMode: 'double',
       captureMode: 'finish',
       maxConsecutiveSixes: 3,
-      safeStartingSquares: true
+      safeStartingSquares: true,
+      allowTokenStacking: false,
+      allowSplitDiceMovement: false
     };
     
     // Create basic game state for testing
@@ -48,15 +50,15 @@ describe('RulesEngine', () => {
       config: defaultConfig,
       players,
       currentPlayerIndex: 0,
-      board: new Array(52).fill(null),
+      board: Array.from({ length: 52 }, () => []),
       status: 'in-progress',
       consecutiveSixes: 0
     };
 
     // Set up board state
-    gameState.board[5] = 'r2';
-    gameState.board[13] = 'b2';
-    gameState.board[45] = 'r3';
+    gameState.board[5] = ['r2'];
+    gameState.board[13] = ['b2'];
+    gameState.board[45] = ['r3'];
   });
 
   describe('Move Validation', () => {

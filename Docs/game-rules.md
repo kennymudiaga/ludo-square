@@ -9,14 +9,16 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 - **Default (Nigerian Style)**: Two dice - roll sum for movement
 - **Classic Mode**: Single die option available
 - **Getting Out Rule**: Requires at least one 6 (regardless of single/double dice)
+- **Split Dice Movement**: In 2-dice mode, use each die value on separate tokens
 
 ### Capture Settings
 - **Default (Nigerian Style)**: Capturing token goes straight to finish line
 - **Classic Mode**: Capturing token stays at capture square
 
 ### Safe Square Rules
-- **Starting Squares**: Each color's starting square is a safe square
+- **Starting Squares**: Configurable - can be safe or not safe
 - **Additional Safe Squares**: Designated colored squares on the track
+- **Token Stacking**: Allow multiple own tokens on same square
 
 ## Game Setup
 
@@ -31,11 +33,11 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 - **4 tokens per player**: All tokens start in their respective home area
 - **Turn Order**: Clockwise starting with Red, then Blue, Green, Yellow
 
-### Starting Positions (Safe Squares)
-- **Red**: Square 1 (Red safe square)
-- **Blue**: Square 14 (Blue safe square) 
-- **Green**: Square 27 (Green safe square)
-- **Yellow**: Square 40 (Yellow safe square)
+### Starting Positions
+- **Red**: Square 1 (Configurable safe square)
+- **Blue**: Square 14 (Configurable safe square) 
+- **Green**: Square 27 (Configurable safe square)
+- **Yellow**: Square 40 (Configurable safe square)
 
 ## Game Rules
 
@@ -90,9 +92,10 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 
 #### Dice Rolling Mechanics
 - **Two Dice (Default)**: 
-  - Roll both dice, use sum for movement
+  - Roll both dice, use sum for movement OR split dice on separate tokens
   - Double 6s (6+6) grants extra turn
   - At least one 6 allows moving token out of home
+  - **Split Movement**: Can use each die value on different tokens (e.g., 6+3 = move one token 6, another token 3)
 - **Single Die (Classic)**: 
   - Roll 1-6, move that many squares
   - Rolling 6 grants extra turn and allows moving out of home
@@ -105,7 +108,7 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 4. **In Home Column**: Move toward center, must roll exact number to finish
 
 #### Invalid Moves
-- Moving a token that would land on own token (no stacking in MVP)
+- Moving a token that would land on own token (unless stacking is enabled)
 - Moving without meeting the "6 to get out" requirement
 - Moving past the finish line (must land exactly in home column)
 
@@ -114,13 +117,13 @@ Ludo is a strategy board game for 2-4 players, where each player races their fou
 Squares 1-52 form the main circular track:
 
 Safe squares (cannot be captured):
-- Square 1 (Red starting square - SAFE)
+- Square 1 (Red starting square - Configurable)
 - Square 9 (Red safe)
-- Square 14 (Blue starting square - SAFE) 
+- Square 14 (Blue starting square - Configurable) 
 - Square 22 (Blue safe)
-- Square 27 (Green starting square - SAFE)
+- Square 27 (Green starting square - Configurable)
 - Square 35 (Green safe)
-- Square 40 (Yellow starting square - SAFE)
+- Square 40 (Yellow starting square - Configurable)
 - Square 48 (Yellow safe)
 ```
 
@@ -137,12 +140,13 @@ Safe squares (cannot be captured):
 ## Implementation Notes
 
 ### Simplified Rules for MVP
-1. **No Stacking**: Each square holds maximum one token
+1. **Token Stacking**: Configurable - allow multiple own tokens on same square
 2. **No Team Play**: Individual players only
 3. **Configurable Dice**: Support both single and double dice modes
 4. **Configurable Capture**: Support both "stay at square" and "go to finish" modes
-5. **Safe Starting Squares**: All starting squares are safe zones
+5. **Configurable Safe Starting Squares**: Starting squares can be safe or regular squares
 6. **Exact Finish**: Must roll exact number to reach finish in home column
+7. **Split Dice Movement**: In 2-dice mode, use each die on separate tokens
 
 ### Game Configuration Object
 ```typescript
@@ -150,7 +154,9 @@ interface GameConfig {
   diceMode: 'single' | 'double';
   captureMode: 'stay' | 'finish';
   maxConsecutiveSixes: number;
-  safeSStartingSquares: boolean;
+  safeStartingSquares: boolean;
+  allowTokenStacking: boolean;
+  allowSplitDiceMovement: boolean; // In 2-dice mode, use each die on separate tokens
 }
 ```
 
@@ -161,5 +167,6 @@ interface GameConfig {
 - Custom dice rules and betting
 - Tournament modes
 - Voice chat integration
+- **Game Coins & Staking**: Players can purchase, stake, and win game-coins
 
 This specification provides the foundation for our Nigerian-style Ludo implementation with configurable classic mode support.

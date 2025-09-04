@@ -1,4 +1,4 @@
-import { GameState, Move, DiceRoll, GameConfig, Color, Token } from './types';
+import { GameState, Move, DiceRoll, GameConfig, Color, Token, SplitMove } from './types';
 import { RulesEngine } from './rules-engine';
 
 export class ActionHandler {
@@ -53,25 +53,35 @@ export class ActionHandler {
     const newPosition = this.calculateNewPosition(token.position, move.steps, player.color);
 
     // Check for capture
-    if (newPosition < 52 && gameState.board[newPosition]) {
-      const occupyingTokenId = gameState.board[newPosition];
-      const occupyingToken = this.findTokenById(gameState, occupyingTokenId);
+    if (newPosition < 52 && gameState.board[newPosition].length > 0) {
+      const occupyingTokenIds = gameState.board[newPosition];
       
-      if (occupyingToken && occupyingToken.playerId !== move.playerId) {
-        // Capture the token
-        occupyingToken.position = -1;
-        occupyingToken.state = 'home';
-        captured = true;
-        capturedTokenId = occupyingTokenId;
+      // Capture all opponent tokens on this square
+      for (const tokenId of occupyingTokenIds) {
+        const occupyingToken = this.findTokenById(gameState, tokenId);
         
-        // Clear the board position
-        gameState.board[newPosition] = null;
+        if (occupyingToken && occupyingToken.playerId !== move.playerId) {
+          // Capture the token
+          occupyingToken.position = -1;
+          occupyingToken.state = 'home';
+          captured = true;
+          capturedTokenId = tokenId;
+        }
+      }
+      
+      // Clear all tokens from the position if capture occurred
+      if (captured) {
+        gameState.board[newPosition] = [];
       }
     }
 
     // Clear old position if token was on board
     if (token.position >= 0 && token.position < 52) {
-      gameState.board[token.position] = null;
+      const oldPositionTokens = gameState.board[token.position];
+      const tokenIndex = oldPositionTokens.indexOf(token.id);
+      if (tokenIndex > -1) {
+        oldPositionTokens.splice(tokenIndex, 1);
+      }
     }
 
     // Move token to new position
@@ -98,10 +108,37 @@ export class ActionHandler {
     } else {
       // Update board with new token position
       token.position = newPosition;
-      gameState.board[token.position] = token.id;
+      gameState.board[token.position].push(token.id);
     }
 
     return { captured, capturedTokenId };
+  }
+
+  /**
+   * Execute a split move (using each die value on separate tokens)
+   */
+  executeSplitMove(gameState: GameState, splitMove: SplitMove): { captured: boolean; capturedTokenIds: string[] } {
+    let totalCaptured = false;
+    const capturedTokenIds: string[] = [];
+
+    // Execute each individual move in the split move
+    for (const individualMove of splitMove.moves) {
+      const move: Move = {
+        playerId: splitMove.playerId,
+        tokenId: individualMove.tokenId,
+        steps: individualMove.steps
+      };
+
+      const result = this.executeMove(gameState, move);
+      if (result.captured) {
+        totalCaptured = true;
+        if (result.capturedTokenId) {
+          capturedTokenIds.push(result.capturedTokenId);
+        }
+      }
+    }
+
+    return { captured: totalCaptured, capturedTokenIds };
   }
 
   /**

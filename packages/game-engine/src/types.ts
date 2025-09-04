@@ -11,6 +11,8 @@ export interface GameConfig {
   captureMode: 'stay' | 'finish'; // stay = classic, finish = Nigerian style
   maxConsecutiveSixes: number;
   safeStartingSquares: boolean;
+  allowTokenStacking: boolean;
+  allowSplitDiceMovement: boolean; // In 2-dice mode, use each die on separate tokens
 }
 
 export interface Player {
@@ -32,7 +34,7 @@ export interface GameState {
   config: GameConfig;
   players: Player[];
   currentPlayerIndex: number;
-  board: (string | null)[]; // Array of 52 squares, null or tokenId
+  board: (string[])[]; // Array of 52 squares, each square can hold multiple tokenIds
   status: GameStatus;
   winner?: string;
   consecutiveSixes: number; // Track consecutive extra turns
@@ -42,6 +44,14 @@ export interface Move {
   playerId: string;
   tokenId: string;
   steps: number;
+}
+
+export interface SplitMove {
+  playerId: string;
+  moves: {
+    tokenId: string;
+    steps: number;
+  }[];
 }
 
 export interface DiceRoll {

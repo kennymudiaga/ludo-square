@@ -38,7 +38,7 @@ export class GameStateManager {
       config,
       players,
       currentPlayerIndex: 0,
-      board: new Array(52).fill(null), // 52 squares on the main track
+      board: Array.from({ length: 52 }, () => []), // 52 squares on the main track, each can hold multiple tokens
       status: 'waiting',
       consecutiveSixes: 0
     };

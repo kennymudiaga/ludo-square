@@ -14,7 +14,9 @@ describe('ActionHandler', () => {
       diceMode: 'double',
       captureMode: 'finish',
       maxConsecutiveSixes: 3,
-      safeStartingSquares: true
+      safeStartingSquares: true,
+      allowTokenStacking: false,
+      allowSplitDiceMovement: false
     };
     
     // Create test game state
@@ -48,15 +50,15 @@ describe('ActionHandler', () => {
       config: defaultConfig,
       players,
       currentPlayerIndex: 0,
-      board: new Array(52).fill(null),
+      board: Array.from({ length: 52 }, () => []),
       status: 'in-progress',
       consecutiveSixes: 0
     };
 
     // Set up board
-    gameState.board[5] = 'r2';
-    gameState.board[8] = 'b2';
-    gameState.board[45] = 'r3';
+    gameState.board[5] = ['r2'];
+    gameState.board[8] = ['b2'];
+    gameState.board[45] = ['r3'];
   });
 
   describe('Dice Rolling', () => {
@@ -124,8 +126,8 @@ describe('ActionHandler', () => {
       // Move token near end of board
       const token = gameState.players[0].tokens[2];
       token.position = 50;
-      gameState.board[45] = null;
-      gameState.board[50] = 'r3';
+      gameState.board[45] = [];
+      gameState.board[50] = ['r3'];
       
       const move: Move = { playerId: 'player1', tokenId: 'r3', steps: 5 };
       
@@ -160,7 +162,7 @@ describe('ActionHandler', () => {
       const token = gameState.players[0].tokens[1];
       token.position = 57; // Last square of red home column (52 + 5)
       token.state = 'home-column';
-      gameState.board[5] = null;
+      gameState.board[5] = [];
       
       const move: Move = { playerId: 'player1', tokenId: 'r2', steps: 1 };
       
