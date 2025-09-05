@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from 'lucide-react';
 
 interface DiceProps {
   value?: number;
@@ -11,17 +10,20 @@ interface DiceProps {
 }
 
 const DiceIcon: React.FC<{ value: number; className?: string }> = ({ value, className = "" }) => {
-  const icons = {
-    1: Dice1,
-    2: Dice2,
-    3: Dice3,
-    4: Dice4,
-    5: Dice5,
-    6: Dice6,
+  const diceEmojis = {
+    1: '⚀',
+    2: '⚁',
+    3: '⚂',
+    4: '⚃',
+    5: '⚄',
+    6: '⚅'
   };
-  
-  const IconComponent = icons[value as keyof typeof icons] || Dice1;
-  return <IconComponent className={className} />;
+
+  return (
+    <span className={`text-2xl ${className}`}>
+      {diceEmojis[value as keyof typeof diceEmojis] || '?'}
+    </span>
+  );
 };
 
 export const Dice: React.FC<DiceProps> = ({ 

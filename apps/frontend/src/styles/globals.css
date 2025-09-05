@@ -5,14 +5,14 @@
 /* Game-specific base styles */
 @layer base {
   body {
-    @apply bg-gradient-to-br from-blue-50 to-green-50 font-game;
+    @apply bg-white font-game;
   }
 }
 
 /* Custom component styles */
 @layer components {
   .game-board-square {
-    @apply relative w-8 h-8 border border-gray-300 flex items-center justify-center text-xs font-medium;
+    @apply relative w-12 h-12 border-2 border-gray-400 flex items-center justify-center text-sm font-medium bg-gray-50 hover:bg-gray-100 transition-colors;
   }
   
   .game-board-square.safe {
@@ -40,7 +40,7 @@
   }
   
   .game-token {
-    @apply w-6 h-6 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-110;
+    @apply w-8 h-8 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-110;
   }
   
   .game-token.red {

@@ -2,7 +2,6 @@ import React from 'react';
 import { Color } from '@ludo-square/game-engine';
 import { motion } from 'framer-motion';
 import { GameToken } from './GameBoard';
-import { Crown, Users } from 'lucide-react';
 
 interface PlayerAreaProps {
   playerId: string;
@@ -76,7 +75,7 @@ export const PlayerArea: React.FC<PlayerAreaProps> = ({
     return (
       <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
         <div className="flex items-center gap-2 mb-2">
-          <Crown className="w-4 h-4 text-green-600" />
+          <span>👑</span>
           <span className="text-sm font-medium text-green-800">Finished</span>
         </div>
         <div className="flex gap-1">
@@ -105,7 +104,7 @@ export const PlayerArea: React.FC<PlayerAreaProps> = ({
           <div>
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
               {name}
-              {isWinner && <Crown className="w-4 h-4 text-yellow-500" />}
+              {isWinner && <span>👑</span>}
             </h3>
             <p className="text-sm text-gray-600">{getColorName(color)} Player</p>
           </div>
@@ -125,7 +124,7 @@ export const PlayerArea: React.FC<PlayerAreaProps> = ({
       {/* Home Area */}
       <div className="mb-4">
         <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-          <Users className="w-4 h-4" />
+          <span>🏠</span>
           Home ({homeTokens.length}/4)
         </h4>
         {renderHomeTokens()}
