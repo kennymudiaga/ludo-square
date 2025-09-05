@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Game-specific base styles */
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-blue-50 to-green-50 font-game;
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  .game-board-square {
+    @apply relative w-8 h-8 border border-gray-300 flex items-center justify-center text-xs font-medium;
+  }
+  
+  .game-board-square.safe {
+    @apply bg-yellow-100 border-yellow-400;
+  }
+  
+  .game-board-square.start {
+    @apply font-bold text-white;
+  }
+  
+  .game-board-square.red-start {
+    @apply bg-ludo-red;
+  }
+  
+  .game-board-square.blue-start {
+    @apply bg-ludo-blue;
+  }
+  
+  .game-board-square.green-start {
+    @apply bg-ludo-green;
+  }
+  
+  .game-board-square.yellow-start {
+    @apply bg-ludo-yellow;
+  }
+  
+  .game-token {
+    @apply w-6 h-6 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-110;
+  }
+  
+  .game-token.red {
+    @apply bg-ludo-red;
+  }
+  
+  .game-token.blue {
+    @apply bg-ludo-blue;
+  }
+  
+  .game-token.green {
+    @apply bg-ludo-green;
+  }
+  
+  .game-token.yellow {
+    @apply bg-ludo-yellow;
+  }
+  
+  .game-token.selectable {
+    @apply ring-2 ring-offset-1 ring-yellow-400 animate-pulse;
+  }
+  
+  .dice-container {
+    @apply bg-white rounded-lg shadow-lg p-4 border-2 border-gray-200;
+  }
+  
+  .dice {
+    @apply w-12 h-12 bg-white border-2 border-gray-800 rounded-lg flex items-center justify-center text-xl font-bold text-gray-800 shadow-md;
+  }
+  
+  .dice.rolling {
+    @apply animate-dice-roll;
+  }
+  
+  .player-area {
+    @apply bg-white rounded-xl shadow-lg p-4 border-l-4;
+  }
+  
+  .player-area.red {
+    @apply border-l-ludo-red;
+  }
+  
+  .player-area.blue {
+    @apply border-l-ludo-blue;
+  }
+  
+  .player-area.green {
+    @apply border-l-ludo-green;
+  }
+  
+  .player-area.yellow {
+    @apply border-l-ludo-yellow;
+  }
+  
+  .player-area.active {
+    @apply ring-2 ring-blue-400 ring-offset-2;
+  }
+}

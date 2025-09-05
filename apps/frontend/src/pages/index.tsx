@@ -1,11 +1,6 @@
-// Placeholder Next.js page
-import { GameStateManager } from '@ludo-square/game-engine';
+import React from 'react';
+import { Game } from '../components/game/Game';
 
 export default function Home() {
-  return (
-    <div>
-      <h1>Ludo Game</h1>
-      <p>Game engine loaded: {typeof GameStateManager}</p>
-    </div>
-  );
+  return <Game />;
 }
