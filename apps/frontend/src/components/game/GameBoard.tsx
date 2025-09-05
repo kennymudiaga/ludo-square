@@ -121,6 +121,86 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
     }
   };
 
+  // Function to determine which token slot (1-4) a position represents in a player's home area
+  const getTokenSlotNumber = (row: number, col: number, playerArea: string): number | null => {
+    if (!playerArea || isPlayerAreaPerimeter(row, col, playerArea)) return null;
+
+    // Calculate relative position within the inner 4x4 area of each 6x6 home zone
+    let relativeRow: number, relativeCol: number;
+
+    switch (playerArea) {
+      case 'red': // inner area: rows 1-4, cols 1-4
+        relativeRow = row - 1;
+        relativeCol = col - 1;
+        break;
+      case 'blue': // inner area: rows 1-4, cols 10-13  
+        relativeRow = row - 1;
+        relativeCol = col - 10;
+        break;
+      case 'green': // inner area: rows 10-13, cols 1-4
+        relativeRow = row - 10;
+        relativeCol = col - 1;
+        break;
+      case 'yellow': // inner area: rows 10-13, cols 10-13
+        relativeRow = row - 10;
+        relativeCol = col - 10;
+        break;
+      default:
+        return null;
+    }
+
+    // Check if position is within the inner 4x4 area
+    if (relativeRow < 0 || relativeRow > 3 || relativeCol < 0 || relativeCol > 3) return null;
+
+    // Map 4x4 inner area to 4 token slots (each 2x2):
+    // Slot 1: top-left (0-1, 0-1)     Slot 2: top-right (0-1, 2-3)
+    // Slot 3: bottom-left (2-3, 0-1)  Slot 4: bottom-right (2-3, 2-3)
+    const slotRow = Math.floor(relativeRow / 2); // 0 or 1
+    const slotCol = Math.floor(relativeCol / 2); // 0 or 1
+    
+    return slotRow * 2 + slotCol + 1; // Convert to slot number 1-4
+  };
+
+  // Function to check if a position is the center of a token slot (for token display)
+  const isTokenSlotCenter = (row: number, col: number, playerArea: string): boolean => {
+    if (!playerArea || isPlayerAreaPerimeter(row, col, playerArea)) return false;
+
+    let relativeRow: number, relativeCol: number;
+
+    switch (playerArea) {
+      case 'red':
+        relativeRow = row - 1;
+        relativeCol = col - 1;
+        break;
+      case 'blue':
+        relativeRow = row - 1;
+        relativeCol = col - 10;
+        break;
+      case 'green':
+        relativeRow = row - 10;
+        relativeCol = col - 1;
+        break;
+      case 'yellow':
+        relativeRow = row - 10;
+        relativeCol = col - 10;
+        break;
+      default:
+        return false;
+    }
+
+    // Check if position is within the inner 4x4 area
+    if (relativeRow < 0 || relativeRow > 3 || relativeCol < 0 || relativeCol > 3) return false;
+
+    // Better centered token positions within each 2x2 slot:
+    // Slot 1 (top-left): center at (0.5, 0.5) -> use (1, 1) 
+    // Slot 2 (top-right): center at (0.5, 2.5) -> use (1, 2)
+    // Slot 3 (bottom-left): center at (2.5, 0.5) -> use (2, 1)
+    // Slot 4 (bottom-right): center at (2.5, 2.5) -> use (2, 2)
+    
+    // More centered positions within the 4x4 grid
+    return (relativeRow === 1 || relativeRow === 2) && (relativeCol === 1 || relativeCol === 2);
+  };
+
   // Function to get player area colors
   const getPlayerAreaStyle = (playerColor: string) => {
     switch (playerColor) {
@@ -173,7 +253,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
         marginBottom: '16px',
         textAlign: 'center'
       }}>
-        Ludo Board: Home Areas & Finish Zone
+        Ludo Board: Token Home Areas & Finish Zone
       </h3>
       
       {/* 15x15 Grid */}
@@ -223,15 +303,49 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
                            playerArea === 'green' ? '🟢' : '🟡';
             titleText = `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Home Border: Row ${row}, Col ${col}`;
           } else if (playerArea && !isPerimeter) {
-            // Player area inner squares (uncolored)
-            squareStyle = {
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              color: '#6b7280',
-              fontWeight: 'normal'
-            };
-            displayContent = `${row},${col}`;
-            titleText = `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Home Interior: Row ${row}, Col ${col}`;
+            // Player area inner squares - show token slots
+            const tokenSlot = getTokenSlotNumber(row, col, playerArea);
+            const isSlotCenter = isTokenSlotCenter(row, col, playerArea);
+            
+            if (isSlotCenter && tokenSlot) {
+              // Token slot center - show token placeholder
+              squareStyle = {
+                backgroundColor: '#f9fafb',
+                border: '2px dashed #d1d5db',
+                color: '#374151',
+                fontWeight: 'bold'
+              };
+              
+              // Create a sample token for demonstration
+              const playerColors = { red: '#ef4444', blue: '#3b82f6', green: '#10b981', yellow: '#f59e0b' };
+              const tokenColor = playerColors[playerArea as keyof typeof playerColors];
+              
+              displayContent = (
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: tokenColor,
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  margin: 'auto'
+                }} />
+              );
+              titleText = `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Token Slot ${tokenSlot}: Row ${row}, Col ${col}`;
+            } else {
+              // Regular inner square
+              squareStyle = {
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                color: '#9ca3af',
+                fontWeight: 'normal',
+                fontSize: '6px'
+              };
+              displayContent = tokenSlot ? `S${tokenSlot}` : `${row},${col}`;
+              titleText = tokenSlot 
+                ? `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Token Slot ${tokenSlot} Area: Row ${row}, Col ${col}`
+                : `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Home Interior: Row ${row}, Col ${col}`;
+            }
           } else {
             // Regular board square styling
             squareStyle = {
@@ -271,8 +385,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
         fontSize: '14px',
         color: '#6b7280'
       }}>
-        <p>15x15 Grid with Player Home Area Borders (6x6) & Central Finish Zone (3x3)</p>
-        <p>🔴 Red Border | 🔵 Blue Border | 🟢 Green Border | 🟡 Yellow Border | 🏁 Finish Zone</p>
+        <p>15x15 Ludo Board with Token Home Areas & Finish Zone</p>
+        <p>🔴 Red | 🔵 Blue | 🟢 Green | 🟡 Yellow | 🏁 Finish Zone</p>
+        <p style={{ fontSize: '12px', marginTop: '8px' }}>
+          Each player's 6x6 home area contains 4 token slots (2x2 each) where tokens start the game
+        </p>
       </div>
     </div>
   );
