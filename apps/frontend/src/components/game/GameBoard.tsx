@@ -201,6 +201,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
     return (relativeRow === 1 || relativeRow === 2) && (relativeCol === 1 || relativeCol === 2);
   };
 
+  // Function to check if a square is part of a player's track (start position or home stretch)
+  const getPlayerTrack = (row: number, col: number): string | null => {
+    // Red player track
+    if (row === 6 && col === 1) return 'red'; // Start position
+    if (row === 7 && col >= 1 && col <= 5) return 'red'; // Home stretch (7,1) to (7,5)
+    
+    // Blue player track  
+    if (row === 1 && col === 8) return 'blue'; // Start position
+    if (col === 7 && row >= 1 && row <= 5) return 'blue'; // Home stretch (1,7) to (5,7)
+    
+    // Green player track
+    if (row === 13 && col === 6) return 'green'; // Start position  
+    if (col === 7 && row >= 9 && row <= 13) return 'green'; // Home stretch (9,7) to (13,7)
+    
+    // Yellow player track
+    if (row === 8 && col === 13) return 'yellow'; // Start position
+    if (row === 7 && col >= 9 && col <= 13) return 'yellow'; // Home stretch (7,9) to (7,13)
+    
+    return null;
+  };
+
   // Function to get player area colors
   const getPlayerAreaStyle = (playerColor: string) => {
     switch (playerColor) {
@@ -276,6 +297,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
           const isFinish = isFinishArea(row, col);
           const playerArea = getPlayerArea(row, col);
           const isPerimeter = playerArea ? isPlayerAreaPerimeter(row, col, playerArea) : false;
+          const playerTrack = getPlayerTrack(row, col);
           
           // Determine styling based on area type
           let squareStyle;
@@ -346,6 +368,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
                 ? `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Token Slot ${tokenSlot} Area: Row ${row}, Col ${col}`
                 : `${playerArea.charAt(0).toUpperCase() + playerArea.slice(1)} Home Interior: Row ${row}, Col ${col}`;
             }
+          } else if (playerTrack) {
+            // Player track squares (start position and home stretch)
+            squareStyle = {
+              ...getPlayerAreaStyle(playerTrack),
+              fontWeight: 'bold',
+              boxShadow: '0 0 8px rgba(0,0,0,0.15)'
+            };
+            
+            // Determine if it's start position or home stretch
+            const isStartPosition = (
+              (playerTrack === 'red' && row === 6 && col === 1) ||
+              (playerTrack === 'blue' && row === 1 && col === 8) ||
+              (playerTrack === 'green' && row === 13 && col === 6) ||
+              (playerTrack === 'yellow' && row === 8 && col === 13)
+            );
+            
+            if (isStartPosition) {
+              displayContent = '🏠'; // House icon for start position
+              titleText = `${playerTrack.charAt(0).toUpperCase() + playerTrack.slice(1)} Start Position: Row ${row}, Col ${col}`;
+            } else {
+              // Direction-specific arrows for home stretch (using consistent block arrow style)
+              let arrow = '';
+              switch (playerTrack) {
+                case 'red': arrow = '▶'; break;    // Right arrow (moving toward center horizontally)
+                case 'blue': arrow = '▼'; break;   // Down arrow (moving toward center vertically down)
+                case 'green': arrow = '▲'; break;  // Up arrow (moving toward center vertically up)  
+                case 'yellow': arrow = '◀'; break; // Left arrow (moving toward center horizontally left)
+                default: arrow = '▶'; break;
+              }
+              displayContent = arrow;
+              titleText = `${playerTrack.charAt(0).toUpperCase() + playerTrack.slice(1)} Home Stretch: Row ${row}, Col ${col}`;
+            }
           } else {
             // Regular board square styling
             squareStyle = {
@@ -385,10 +439,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ tokens, onTokenClick }) =>
         fontSize: '14px',
         color: '#6b7280'
       }}>
-        <p>15x15 Ludo Board with Token Home Areas & Finish Zone</p>
+        <p>15x15 Ludo Board with Token Home Areas, Tracks & Finish Zone</p>
         <p>🔴 Red | 🔵 Blue | 🟢 Green | 🟡 Yellow | 🏁 Finish Zone</p>
         <p style={{ fontSize: '12px', marginTop: '8px' }}>
-          Each player's 6x6 home area contains 4 token slots (2x2 each) where tokens start the game
+          🏠 Start Positions | ➤ Home Stretch Tracks | Each home area contains 4 token slots (2x2 each)
         </p>
       </div>
     </div>
